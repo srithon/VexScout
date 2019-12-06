@@ -50,6 +50,18 @@
 ///         rank
 ///                 <team name>
 
+use std::io::{self, Write};
+
 fn main() {
     println!("Hello, world!");
+
+    let mut user_input = String::new();
+
+    loop
+    {
+        print!("Input: ");
+        let _ = io::stdout().flush();
+        io::stdin().read_line(&mut user_input)
+            .expect("Error getting input");
+    }
 }
