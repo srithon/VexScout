@@ -24,6 +24,18 @@
 ///         update
 ///             (updates config file if anything changed)
 /// 
+///     * team <team name>  TeamContext | OrganizationContext
+///         ==== OrganizationContext ====
+///            list
+///               (lists all teams in organization)
+///         stats (default [current_team]);     StatsContext
+///             | * <team name>
+///             | * <organization name>
+///                 (loads stats)
+///                     (750B vs 750)
+///             rank
+///                     <team name>
+///         history
 /// 
 ///     * comp(etition) <sku>   CompetitionContext
 ///         team <team name>
@@ -42,13 +54,11 @@
 ///             * lookup <n>
 ///                 (n would be nth match)
 ///         wait
-///     stats (default [current_team]);     StatsContext
-///         | * <team name>     TeamStatsContext
-///         | * <organization name>     TeamsStatsContext
-///             (loads stats)
-///                 (750B vs 750)
-///         rank
-///                 <team name>
+///     * stats     StatsContext
+///         | * <team name> | <organization name>
+///         | * <competition sku>       
+///         | * <state abbreviation>    StatsListContext
+///     
 
 use std::io::{self, Write};
 use std::path::Path;

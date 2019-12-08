@@ -92,12 +92,18 @@ impl ReplInterface
         user_input
     }
 
+    ///
+    /// Error Codes
+    /// 0: No subcommand specified
+    /// 1: Invalid command
+    /// 2: Unknown Error
+    /// 9: Exit
     pub fn eval(&mut self, input: String) -> Result<(), u8>
     {
         // println!("{}", input.chars().rev().skip(1).collect::<String>());
-        let mut words = input.trim_end().split_ascii_whitespace();
+        let mut words = input.trim().split_ascii_whitespace();
 
-        if let Some(mut command) = words.next()
+        if let Some(command) = words.next()
         {
             let global = command.eq_ignore_ascii_case("global");
             
@@ -116,102 +122,157 @@ impl ReplInterface
                 }
             }
 
-            let current_context = self.get_contexts().last();
-            if current_context.is_some() && !global
-            {
-                let context = current_context.unwrap();
-                match context
-                {
-                    _ => ()
-                }
-            }
-            else // list is empty, base context
-            {
+            let mut contexts = self.get_contexts().iter();
+            let first_context = {
                 if global
                 {
-                    let command_maybe = words.next();
-                    if let Some(second_word) = command_maybe
+                    &ProgramContext::BaseContext
+                }
+                else
+                {
+                    if let Some(context) = contexts.next()
                     {
-                        command = second_word;
+                        context
                     }
                     else
                     {
-                        println!("Please enter a valid command after 'global'");
-                        return Err(1);
+                        &ProgramContext::BaseContext
                     }
-
-                    // todo do something better than clearing every time
-                    self.get_contexts_mut().clear();
                 }
-                match command.to_ascii_lowercase().as_str()
-                {
-                    "config" => {
-                        println!("config!!");
-                        self.add_context(ProgramContext::ConfigContext);
-                    },
-                    "competition" | "comp" => {
-                        println!("competition!");
-                        if let Some(sku) = words.next()
+            };
+
+            match first_context
+            {
+                ProgramContext::ConfigContext => {
+
+                },
+                ProgramContext::TeamContext(team_name) => {
+                    let subcommand_maybe = words.next();
+                    if let Some(secondary_context) = contexts.next()
+                    {
+                        match secondary_context
                         {
-                            // todo verify sku is valid
-                            self.add_context(ProgramContext::CompetitionContext(sku.to_owned()));
+                            ProgramContext::StatsContext => {
+
+                            },
+                            ProgramContext::HistoryContext => {
+
+                            },
+                            _ => ()
                         }
-                    },
-                    "stats" => {
-                        println!("stats");
-
-                        if let Some(team_or_organization_name) = words.next()
+                    }
+                    else
+                    {
+                        if let Some(subcommand) = subcommand_maybe
                         {
-                            // todo verify name is valid and not random string
-                            let last_char = team_or_organization_name.chars().last();
-                            if let Some(character) = last_char
+                            match subcommand.trim().to_ascii_lowercase().as_str()
                             {
-                                // todo clear or branch off from old contexts
-
-                                if character.is_alphabetic()
-                                {
-                                    let team_context = ProgramContext::TeamContext(team_or_organization_name.to_string());
-                                    self.add_context(team_context);
+                                "stats" => {
                                     self.add_context(ProgramContext::StatsContext);
-                                }
-                                else
-                                {
-                                    let organization_context = ProgramContext::OrganizationContext(team_or_organization_name[..team_or_organization_name.len() - 1].to_string());
-                                    self.add_context(organization_context);
-                                    self.add_context(ProgramContext::StatsContext);
+                                },
+                                "history" => {
+                                    self.add_context(ProgramContext::HistoryContext);
+                                },
+                                _ => {
+                                    println!("Invalid subcommand");
                                 }
                             }
-                            else // originally thought this was just a newline but dont think so
+                        }
+                    }
+                },
+                ProgramContext::OrganizationContext(organization_name) => {
+
+                },
+                ProgramContext::CompetitionContext(competition_sku) => {
+
+                },
+                ProgramContext::StatsContext => {
+
+                },
+                ProgramContext::BaseContext => {
+                    let real_command = {
+                        if global
+                        {
+                            let command_maybe = words.next();
+                            if let Some(second_word) = command_maybe
                             {
-                                println!("How did you do that?");
+                                // self.get_contexts_mut().clear();
+                                second_word
+                            }
+                            else
+                            {
+                                println!("Please enter a command after 'global'");
                                 return Err(1);
                             }
                         }
-                        else // enter stats mode
+                        else
                         {
-                            self.add_context(ProgramContext::StatsContext);
+                            command
                         }
-                    },
-                    "team" => {
-                        println!("team!");
+                    }.to_ascii_lowercase();
 
-                        if let Some(team_name) = words.next()
-                        {
-                            // todo verify valid team name
-                            self.add_context(ProgramContext::TeamContext(team_name.to_string()));
+                    match real_command.as_str()
+                    {
+                        "config" => {
+                            println!("config!!");
+                            self.add_context(ProgramContext::ConfigContext);
+                        },
+                        "competition" | "comp" => {
+                            println!("competition!");
+                            if let Some(sku) = words.next()
+                            {
+                                // todo verify sku is valid
+                                self.add_context(ProgramContext::CompetitionContext(sku.to_owned()));
+                            }
+                        },
+                        "stats" | "team" => {
+                            println!("{}", real_command);
+    
+                            if let Some(team_or_organization_name) = words.next()
+                            {
+                                // todo verify name is valid and not random string
+                                let last_char = team_or_organization_name.chars().last();
+                                if let Some(character) = last_char
+                                {
+                                    // todo clear or branch off from old contexts
+    
+                                    if character.is_alphabetic()
+                                    {
+                                        let team_context = ProgramContext::TeamContext(team_or_organization_name.to_string());
+                                        self.add_context(team_context);
+                                    }
+                                    else
+                                    {
+                                        let organization_context = ProgramContext::OrganizationContext(team_or_organization_name.to_string());
+                                        self.add_context(organization_context);
+                                    }
+
+                                    if real_command.eq("stats")
+                                    {
+                                        self.add_context(ProgramContext::StatsContext);
+                                    }
+                                }
+                                else // originally thought this was just a newline but dont think so
+                                {
+                                    println!("How did you do that?");
+                                    return Err(2);
+                                }
+                            }
+                            else if real_command.eq("stats") // enter stats mode
+                            {
+                                self.add_context(ProgramContext::StatsContext);
+                            }
+                        },
+                        "exit" => {
+                            return Err(9);
+                        },
+                        _ => {
+                            println!("whatever");
                         }
-                        else // no team specified
-                        {
-                            println!("Please specify a team");
-                            return Err(1);
-                        }
-                    },
-                    "exit" => {
-                        return Err(9);
                     }
-                    _ => {
-                        println!("whatever");
-                    }
+                },
+                _ => {
+                    panic!("Invalid base context!");
                 }
             }
         }
@@ -280,6 +341,7 @@ pub enum ProgramContext
     HistoryContext, // team name
     TeamContext(String), // team name
     OrganizationContext(String), // organization name
+    BaseContext
 }
 
 impl fmt::Display for ProgramContext
@@ -317,7 +379,10 @@ impl fmt::Display for ProgramContext
                 write!(f, "{}> ", team_name)
             },
             ProgramContext::StatsContext => {
-                write!(f, "stats>")
+                write!(f, "stats> ")
+            },
+            ProgramContext::BaseContext => {
+                panic!("Calling fmt on base context?");
             }
         }
     }
