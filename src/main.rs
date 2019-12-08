@@ -51,17 +51,20 @@
 ///                 <team name>
 
 use std::io::{self, Write};
+use std::path::Path;
+mod repl;
 
 fn main() {
     println!("Hello, world!");
 
     let mut user_input = String::new();
 
+    let repl_interface = repl::ReplInterface::new(&Some(Path::new("testing.json")));
+    let repl_configuration = repl_interface.get_configuration();
+    println!("{}\n{}", repl_configuration.get_current_team(), repl_configuration.is_match_load_default_to_organization());
+
     loop
     {
-        print!("Input: ");
-        let _ = io::stdout().flush();
-        io::stdin().read_line(&mut user_input)
-            .expect("Error getting input");
+        repl_interface.prompt();
     }
 }

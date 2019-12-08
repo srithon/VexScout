@@ -3,6 +3,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 // use serde_json::Result;
+use std::io::{self, Write};
+use std::fmt;
 
 pub struct ReplInterface
 {
@@ -60,6 +62,16 @@ impl ReplInterface
     pub fn add_context(&mut self, context: ProgramContext)
     {
         self.contexts.push(context);
+    }
+
+    pub fn prompt(&self) -> String
+    {
+        let mut user_input = String::new();
+        print!("Input: ");
+        let _ = io::stdout().flush();
+        io::stdin().read_line(&mut user_input)
+            .expect("Error getting input");
+        user_input
     }
 }
 
