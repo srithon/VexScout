@@ -105,7 +105,8 @@ impl ReplInterface
 
         if let Some(command) = words.next()
         {
-            let global = command.eq_ignore_ascii_case("global");
+            let command = command.trim().to_ascii_lowercase();
+            let global = command.eq("global");
             
             if !global
             {
@@ -147,10 +148,53 @@ impl ReplInterface
 
                 },
                 ProgramContext::TeamContext(team_name) => {
-                    let subcommand_maybe = words.next();
                     if let Some(secondary_context) = contexts.next()
                     {
                         match secondary_context
+                        {
+                            ProgramContext::StatsContext => {
+                                if let Some(subcommand) = words.next()
+                                {
+                                    match subcommand.to_ascii_lowercase().as_str()
+                                    {
+                                        "graph" => {
+                                            println!("graphing!");
+                                        },
+                                        "competition" => {
+                                            println!("competition stats");
+                                        },
+                                        _ => {
+                                            println!("invalid subcommand");
+                                        }
+                                    }
+                                }
+                            },
+                            ProgramContext::HistoryContext => {
+                                println!("team history");
+                            },
+                            _ => ()
+                        }
+                    }
+                    else
+                    {
+                        match command.as_str()
+                        {
+                            "stats" => {
+                                self.add_context(ProgramContext::StatsContext);
+                            },
+                            "history" => {
+                                self.add_context(ProgramContext::HistoryContext);
+                            },
+                            _ => {
+                                println!("Invalid subcommand");
+                            }
+                        }
+                    }
+                },
+                ProgramContext::OrganizationContext(organization_name) => {
+                    if let Some(subcontext) = contexts.next()
+                    {
+                        match subcontext
                         {
                             ProgramContext::StatsContext => {
 
@@ -163,31 +207,127 @@ impl ReplInterface
                     }
                     else
                     {
-                        if let Some(subcommand) = subcommand_maybe
+                        match command.as_str()
                         {
-                            match subcommand.trim().to_ascii_lowercase().as_str()
-                            {
-                                "stats" => {
-                                    self.add_context(ProgramContext::StatsContext);
-                                },
-                                "history" => {
-                                    self.add_context(ProgramContext::HistoryContext);
-                                },
-                                _ => {
-                                    println!("Invalid subcommand");
-                                }
+                            "list" => {
+                                println!("listing all teams in {}", organization_name);
+                            },
+                            "graph" => {
+                                println!("graphing!");
+                            },
+                            "competition" => {
+                                println!("competition stats");
+                            },
+                            _ => {
+                                println!("invalid subcommand");
                             }
                         }
                     }
                 },
-                ProgramContext::OrganizationContext(organization_name) => {
-
-                },
                 ProgramContext::CompetitionContext(competition_sku) => {
+                    if let Some(subcontext) = contexts.next()
+                    {
+                        match subcontext
+                        {
+                            ProgramContext::TeamContext(team_name) => {
+                                if let Some(subcommand) = words.next()
+                                {
+                                    let subcommand = subcommand.trim().to_ascii_lowercase();
+                                    
+                                    match subcommand.as_str()
+                                    {
+                                        "load" => {
+                                            println!("loading all matches for {}", team_name);
+                                        },
+                                        "next" => {
+                                            println!("finding next match for {}", team_name);
+                                        },
+                                        "prev" => {
+                                            println!("finding previous match for {}", team_name);
+                                        },
+                                        "lookup" => {
+                                            println!("looking up nth match for {}", team_name);
+                                        },
+                                        _ => ()
+                                    }
+                                }
+                                else
+                                {
+                                    return Err(0);
+                                }
+                            },
+                            ProgramContext::MatchContext(match_struct) => {
+                                println!("Match");
+                            },
+                            ProgramContext::MatchListContext(match_struct_list) => {
+                                println!("Multiple matches");
+                            },
+                            _ => ()
+                        }
+                    }
+                    else
+                    {
+                        match command.as_str()
+                        {
+                            "team" => {
+                                if let Some(team_name) = words.next()
+                                {
+                                    // todo verify team name integrity
+                                    self.add_context(ProgramContext::TeamContext(team_name.to_owned()));
+                                }
+                                else
+                                {
+                                    return Err(0);
+                                }
+                            },
+                            "match" => {
+                                println!("match");
 
+                                if let Some(subcommand) = words.next()
+                                {
+                                    let subcommand = subcommand.trim().to_ascii_lowercase();
+                                    
+                                    match subcommand.as_str()
+                                    {
+                                        "load" => {
+                                            println!("loading")
+                                        },
+                                        "next" => {
+                                            println!("finding next match");
+                                        },
+                                        "prev" => {
+                                            println!("finding previous match");
+                                        },
+                                        "lookup" => {
+                                            println!("looking up nth match");
+                                        },
+                                        _ => ()
+                                    }
+                                }
+                                else
+                                {
+                                    return Err(0);
+                                }
+                            },
+                            "wait" => {
+                                println!("wait");
+                            },
+                            _ => {
+                                println!("Invalid subcommand");
+                            }
+                        }
+                    }
                 },
                 ProgramContext::StatsContext => {
-
+                    if let Some(target) = words.next()
+                    {
+                        // figure out what it means; team name, org name...
+                        println!("target of stats is {}", target);
+                    }
+                    else
+                    {
+                        return Err(0);
+                    }
                 },
                 ProgramContext::BaseContext => {
                     let real_command = {
@@ -207,7 +347,7 @@ impl ReplInterface
                         }
                         else
                         {
-                            command
+                            &command
                         }
                     }.to_ascii_lowercase();
 
@@ -368,9 +508,8 @@ impl fmt::Display for ProgramContext
             ProgramContext::MatchContext(match_struct) => {
                 write!(f, "#{}> ", match_struct.match_num)
             },
-            // todo
             ProgramContext::MatchListContext(match_list) => {
-                Ok(())
+                write!(f, "list> ")
             },
             ProgramContext::OrganizationContext(organization_name) => {
                 write!(f, "{}> ", organization_name)
