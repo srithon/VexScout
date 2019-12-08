@@ -59,12 +59,16 @@ fn main() {
 
     let mut user_input = String::new();
 
-    let repl_interface = repl::ReplInterface::new(&Some(Path::new("testing.json")));
+    let mut repl_interface = repl::ReplInterface::new(&Some(Path::new("testing.json")));
     let repl_configuration = repl_interface.get_configuration();
     println!("{}\n{}", repl_configuration.get_current_team(), repl_configuration.is_match_load_default_to_organization());
 
     loop
     {
-        repl_interface.prompt();
+        let input = repl_interface.prompt();
+        if let Err(9) = repl_interface.eval(input)
+        {
+            break;
+        }
     }
 }

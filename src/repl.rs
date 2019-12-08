@@ -59,6 +59,11 @@ impl ReplInterface
         &self.contexts
     }
 
+    fn get_contexts_mut(&mut self) -> &mut Vec<ProgramContext>
+    {
+        &mut self.contexts
+    }
+
     pub fn add_context(&mut self, context: ProgramContext)
     {
         self.contexts.push(context);
@@ -67,11 +72,151 @@ impl ReplInterface
     pub fn prompt(&self) -> String
     {
         let mut user_input = String::new();
-        print!("Input: ");
+
+        let contexts = self.get_contexts();
+        if contexts.len() != 0
+        {
+            for context in contexts
+            {
+                print!("{}", context);
+            }
+        }
+        else
+        {
+            print!("> ");
+        }
+
         let _ = io::stdout().flush();
         io::stdin().read_line(&mut user_input)
             .expect("Error getting input");
         user_input
+    }
+
+    pub fn eval(&mut self, input: String) -> Result<(), u8>
+    {
+        // println!("{}", input.chars().rev().skip(1).collect::<String>());
+        let mut words = input.trim_end().split_ascii_whitespace();
+
+        if let Some(mut command) = words.next()
+        {
+            let global = command.eq_ignore_ascii_case("global");
+            
+            if !global
+            {
+                if command.eq_ignore_ascii_case("exit")
+                {
+                    if self.get_contexts_mut().pop().is_some()
+                    {
+                        return Ok(());
+                    }
+                    else
+                    {
+                        return Err(9);
+                    }
+                }
+            }
+
+            let current_context = self.get_contexts().last();
+            if current_context.is_some() && !global
+            {
+                let context = current_context.unwrap();
+                match context
+                {
+                    _ => ()
+                }
+            }
+            else // list is empty, base context
+            {
+                if global
+                {
+                    let command_maybe = words.next();
+                    if let Some(second_word) = command_maybe
+                    {
+                        command = second_word;
+                    }
+                    else
+                    {
+                        println!("Please enter a valid command after 'global'");
+                        return Err(1);
+                    }
+
+                    // todo do something better than clearing every time
+                    self.get_contexts_mut().clear();
+                }
+                match command.to_ascii_lowercase().as_str()
+                {
+                    "config" => {
+                        println!("config!!");
+                        self.add_context(ProgramContext::ConfigContext);
+                    },
+                    "competition" | "comp" => {
+                        println!("competition!");
+                        if let Some(sku) = words.next()
+                        {
+                            // todo verify sku is valid
+                            self.add_context(ProgramContext::CompetitionContext(sku.to_owned()));
+                        }
+                    },
+                    "stats" => {
+                        println!("stats");
+
+                        if let Some(team_or_organization_name) = words.next()
+                        {
+                            // todo verify name is valid and not random string
+                            let last_char = team_or_organization_name.chars().last();
+                            if let Some(character) = last_char
+                            {
+                                // todo clear or branch off from old contexts
+
+                                if character.is_alphabetic()
+                                {
+                                    let team_context = ProgramContext::TeamContext(team_or_organization_name.to_string());
+                                    self.add_context(team_context);
+                                    self.add_context(ProgramContext::StatsContext);
+                                }
+                                else
+                                {
+                                    let organization_context = ProgramContext::OrganizationContext(team_or_organization_name[..team_or_organization_name.len() - 1].to_string());
+                                    self.add_context(organization_context);
+                                    self.add_context(ProgramContext::StatsContext);
+                                }
+                            }
+                            else // originally thought this was just a newline but dont think so
+                            {
+                                println!("How did you do that?");
+                                return Err(1);
+                            }
+                        }
+                        else // enter stats mode
+                        {
+                            self.add_context(ProgramContext::StatsContext);
+                        }
+                    },
+                    "team" => {
+                        println!("team!");
+
+                        if let Some(team_name) = words.next()
+                        {
+                            // todo verify valid team name
+                            self.add_context(ProgramContext::TeamContext(team_name.to_string()));
+                        }
+                        else // no team specified
+                        {
+                            println!("Please specify a team");
+                            return Err(1);
+                        }
+                    },
+                    "exit" => {
+                        return Err(9);
+                    }
+                    _ => {
+                        println!("whatever");
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -79,7 +224,7 @@ impl ReplInterface
 pub struct ReplConfiguration
 {
     match_load_default_to_organization: bool,
-    current_team: String,
+    current_team: String
 }
 
 impl ReplConfiguration
