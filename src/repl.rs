@@ -98,6 +98,7 @@ struct Match
 
     round: u8,
     match_num: u16,
+    division: String,
 
     red1: String,
     red2: String,
@@ -113,11 +114,54 @@ struct Match
 pub enum ProgramContext
 {
     CompetitionContext(String), // sku
+    DivisionContext(String), // division name
+    RoundContext(u16), // round number
     MatchListContext(Vec<Match>),
     MatchContext(Match), // match id
     ConfigContext,
-    StatsContext(String), // team name or organization name
-    HistoryContext(String), // team name
+    StatsContext,
+    HistoryContext, // team name
     TeamContext(String), // team name
     OrganizationContext(String), // organization name
+}
+
+impl fmt::Display for ProgramContext
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+    {
+        match self
+        {
+            ProgramContext::CompetitionContext(sku) => {
+                write!(f, "{}> ", sku)
+            },
+            ProgramContext::ConfigContext => {
+                write!(f, "config> ")
+            },
+            ProgramContext::HistoryContext => {
+                write!(f, "history> ")
+            },
+            ProgramContext::DivisionContext(division_name) => {
+                write!(f, "{}> ", division_name)
+            },
+            ProgramContext::RoundContext(round_num) => {
+                write!(f, "{}> ", round_num)
+            },
+            ProgramContext::MatchContext(match_struct) => {
+                write!(f, "#{}> ", match_struct.match_num)
+            },
+            // todo
+            ProgramContext::MatchListContext(match_list) => {
+                Ok(())
+            },
+            ProgramContext::OrganizationContext(organization_name) => {
+                write!(f, "{}> ", organization_name)
+            },
+            ProgramContext::TeamContext(team_name) => {
+                write!(f, "{}> ", team_name)
+            },
+            ProgramContext::StatsContext => {
+                write!(f, "stats>")
+            }
+        }
+    }
 }
