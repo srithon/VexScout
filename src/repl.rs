@@ -6,6 +6,18 @@ use serde::{Deserialize, Serialize};
 use std::io::{self, Write};
 use std::fmt;
 
+use regex::Regex;
+
+use lazy_static::{lazy_static};
+
+fn team_name_is_valid(name: &str) -> bool
+{
+    lazy_static! {
+        static ref REGEX_MATCHER: Regex = Regex::new(r"[0-9]+[a-zA-Z]").unwrap();
+    }
+    REGEX_MATCHER.is_match(name)
+}
+
 pub struct ReplInterface
 {
     config: ReplConfiguration,
@@ -97,6 +109,8 @@ impl ReplInterface
     /// 0: No subcommand specified
     /// 1: Invalid command
     /// 2: Unknown Error
+    /// 3: Invalid input
+    /// 4: Missing argument
     /// 9: Exit
     pub fn eval(&mut self, input: String) -> Result<(), u8>
     {
@@ -273,7 +287,16 @@ impl ReplInterface
                                 if let Some(team_name) = words.next()
                                 {
                                     // todo verify team name integrity
-                                    self.add_context(ProgramContext::TeamContext(team_name.to_owned()));
+                                    if team_name_is_valid(team_name)
+                                    {
+                                        println!("Valid team name: {}", team_name);
+                                        self.add_context(ProgramContext::TeamContext(team_name.to_owned()));
+                                    }
+                                    else
+                                    {
+                                        println!("Invalid team name: {}", team_name);
+                                        return Err(3);
+                                    }
                                 }
                                 else
                                 {
@@ -365,12 +388,9 @@ impl ReplInterface
                                 self.add_context(ProgramContext::CompetitionContext(sku.to_owned()));
                             }
                         },
-                        "stats" | "team" => {
-                            println!("{}", real_command);
-    
+                        "stats" | "team" => {    
                             if let Some(team_or_organization_name) = words.next()
                             {
-                                // todo verify name is valid and not random string
                                 let last_char = team_or_organization_name.chars().last();
                                 if let Some(character) = last_char
                                 {
@@ -378,13 +398,29 @@ impl ReplInterface
     
                                     if character.is_alphabetic()
                                     {
-                                        let team_context = ProgramContext::TeamContext(team_or_organization_name.to_string());
-                                        self.add_context(team_context);
+                                        let team_name = team_or_organization_name.to_string();
+                                        
+                                        if team_name_is_valid(&team_name)
+                                        {
+                                            let team_context = ProgramContext::TeamContext(team_name.to_ascii_uppercase());
+                                            self.add_context(team_context);
+                                        }
+                                        else
+                                        {
+                                            println!("Invalid team name: {}", team_name);                                            
+                                            return Err(3);
+                                        }
                                     }
-                                    else
+                                    // otherwise if characters are all digits
+                                    else if team_or_organization_name.chars().all(|x| !x.is_alphabetic())
                                     {
                                         let organization_context = ProgramContext::OrganizationContext(team_or_organization_name.to_string());
                                         self.add_context(organization_context);
+                                    }
+                                    else
+                                    {
+                                        println!("Invalid organization/team name: {}", team_or_organization_name);
+                                        return Err(3);
                                     }
 
                                     if real_command.eq("stats")
@@ -392,15 +428,15 @@ impl ReplInterface
                                         self.add_context(ProgramContext::StatsContext);
                                     }
                                 }
-                                else // originally thought this was just a newline but dont think so
-                                {
-                                    println!("How did you do that?");
-                                    return Err(2);
-                                }
                             }
                             else if real_command.eq("stats") // enter stats mode
                             {
                                 self.add_context(ProgramContext::StatsContext);
+                            }
+                            else
+                            {
+                                println!("Please enter a team name!");
+                                return Err(4);
                             }
                         },
                         "exit" => {
@@ -421,6 +457,7 @@ impl ReplInterface
     }
 }
 
+// todo have option for VEXU support
 #[derive(Serialize, Deserialize)]
 pub struct ReplConfiguration
 {

@@ -15,7 +15,6 @@
 ///     Preface input with 'global' to issue commands from the global context
 ///         This will usually exit out from subcontext by default
 /// command list
-///     Within Each Context
 ///     * config;       ConfigContext
 ///         set <key> <value>
 ///             (throws error if invalid type)
